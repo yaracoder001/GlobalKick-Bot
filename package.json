@@ -1,0 +1,13 @@
+{
+  "name": "global-kick-bot",
+  "version": "1.0.0",
+  "description": "Global Kick - Rubika World Cup game bot",
+  "main": "src/index.js",
+  "scripts": { "start": "node src/index.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "mongoose": "^8.5.0",
+    "sharp": "^0.33.4"
+  }
+}
