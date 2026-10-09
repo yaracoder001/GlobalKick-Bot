@@ -7,6 +7,8 @@ const c = {
   adminPass: process.env.ADMIN_PASS,
   tz: process.env.TZ,
   channel: process.env.CHANNEL_ID || '',
+  richMode: process.env.RICH_MODE || 'metadata', // metadata | html | markdown | plain
+  metaIndex: process.env.META_INDEX || 'cp',     // cp (کاراکتر) | utf16
   slots: Number(process.env.SLOTS_PER_DAY || 5),
   gapH: Number(process.env.MATCH_GAP_HOURS || 2),
   tableMode: process.env.TABLE_MODE || 'match',

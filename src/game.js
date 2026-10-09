@@ -131,8 +131,8 @@ async function programText(day, s) {
   const fx = await Fixture.find({ season: s.no, day }).sort({ idx: 1 });
   if (!fx.length || !fx[0].at) return null;
   const nm = await nameMap();
-  return `📅 برنامه روز ${day} از ${SEASON_DAYS} | سیزن ${s.no} | ${STAGE_FA[fx[0].stage]}\n📆 ${fx[0].at.toLocaleDateString('fa-IR')}\n\n` +
-    fx.map((f) => `⏰ ${hm(f.at)} | ${nm[f.home].flag} ${nm[f.home].name} 🆚 ${nm[f.away].name} ${nm[f.away].flag}`).join('\n');
+  return [`📅 برنامه روز ${day} از ${SEASON_DAYS} | سیزن ${s.no} | ${STAGE_FA[fx[0].stage]}\n📆 ${fx[0].at.toLocaleDateString('fa-IR')}\n\n`,
+    api.quote(fx.map((f) => `⏰ ${hm(f.at)} | ${nm[f.home].flag} ${nm[f.home].name} 🆚 ${nm[f.away].name} ${nm[f.away].flag}`).join('\n'))];
 }
 
 async function createSeason(no, startDate) {
@@ -155,7 +155,7 @@ async function startSeason(no = 1) {
   await createSeason(no, sd);
   const s = await getSetting('season'), txt = await programText(1, s);
   await setSetting('programDay', `${no}:1`);
-  await broadcast(`🏁 سیزن ${no} Global Kick شروع شد! (${SEASON_DAYS} روز)\n\n${txt}`);
+  await broadcast([`🏁 سیزن ${no} Global Kick شروع شد! (${SEASON_DAYS} روز)\n\n`, ...(txt || [])]);
   return sd;
 }
 
@@ -164,7 +164,7 @@ async function createKO(s, stage, pairs) {
   await setSetting('season', { ...s, stage });
   await assignTimes();
   const nm = await nameMap();
-  await broadcast(`🎯 قرعه ${STAGE_FA[stage]} (روز ${KO_DAY[stage]})\n\n` + pairs.map(([h, a]) => `${nm[h].flag} ${nm[h].name} 🆚 ${nm[a].name} ${nm[a].flag}`).join('\n'));
+  await broadcast([`🎯 قرعه ${STAGE_FA[stage]} (روز ${KO_DAY[stage]})\n\n`, api.quote(pairs.map(([h, a]) => `${nm[h].flag} ${nm[h].name} 🆚 ${nm[a].name} ${nm[a].flag}`).join('\n'))]);
 }
 async function progress(now) {
   const s = await getSetting('season'); if (!s) return;
@@ -217,8 +217,7 @@ async function dayEnd(season, day, stage) {
   const ch = await getChannel(); if (!ch) return;
   const nm = await nameMap();
   const fx = await Fixture.find({ season, day }).sort({ idx: 1 });
-  await api.send(ch, `📋 نتایج روز ${day} | سیزن ${season} | ${STAGE_FA[stage]}\n\n` +
-    fx.map((f) => `${nm[f.home].flag} ${nm[f.home].name} ${f.hg} - ${f.ag} ${nm[f.away].name} ${nm[f.away].flag}${f.pen ? ' (پنالتی)' : ''}`).join('\n'));
+  await api.send(ch, [`📋 نتایج روز ${day} | سیزن ${season} | ${STAGE_FA[stage]}\n\n`, api.quote(fx.map((f) => `${nm[f.home].flag} ${nm[f.home].name} ${f.hg} - ${f.ag} ${nm[f.away].name} ${nm[f.away].flag}${f.pen ? ' (پنالتی)' : ''}`).join('\n'))]);
   if (stage === 'L') await sendTable(ch, '🏆 جدول پایان روز');
 }
 async function runList(due) {

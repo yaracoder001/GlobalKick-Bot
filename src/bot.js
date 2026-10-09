@@ -11,6 +11,7 @@ const {
 } = require("./db");
 const api = require("./rubika");
 const game = require("./game");
+const { mono, quote } = api;
 const { POS_FA, PACKS } = require("./data");
 
 const L = {
@@ -202,23 +203,32 @@ const statusText = (t) =>
   `${t.flag} ${t.name}\n💰 سکه: ${fmt(t.coins)}\n👨‍🏫 مربی: سطح ${t.coach}\n🛠 کادر فنی: سطح ${t.staff}\n🏟 استادیوم: سطح ${t.stadium}\n` +
   `🧠 چیدمان: ${t.formation || "4-3-3"} | سبک: ${STYLE_FA[t.style || "balanced"]}\n` +
   `📊 بازی ${t.p} | برد ${t.w} | مساوی ${t.d} | باخت ${t.l}\n⚽ گل زده ${t.gf} | گل خورده ${t.ga} | امتیاز ${t.pts}`;
-const packsText = () =>
-  "🪙 پک‌های سکه (پرداخت با تومان)\n\n" +
-  PACKS.map((p) => `🪙 ${fmt(p.coins)} سکه — ${fmt(p.price)} تومان`).join("\n");
-const starsText = (stars) =>
-  "⭐ بازیکنان VIP\n" +
-  (Object.entries(CAT)
-    .map(([lbl, pos]) => {
-      const l = stars.filter((s) => s.pos === pos);
-      return l.length
-        ? `\n${lbl}\n` +
-            l
-              .map((s) => `• ${s.name} | ${s.rating} | ${fmt(s.price)} تومان`)
-              .join("\n")
-              .join("\n")
-        : "";
-    })
-    .join("") || "\nفعلاً بازیکنی نیست.");
+const packsText = () => [
+  "🪙 پک‌های سکه (پرداخت با تومان)\n\n",
+  quote(
+    PACKS.map((p) => `🪙 ${fmt(p.coins)} سکه — ${fmt(p.price)} تومان`).join(
+      "\n",
+    ),
+  ),
+];
+const starsText = (stars) => {
+  const segs = ["⭐ بازیکنان ویژه VIP (پرداخت با تومان)\n"];
+  for (const [lbl, pos] of Object.entries(CAT)) {
+    const l = stars.filter((s) => s.pos === pos);
+    if (!l.length) continue;
+    segs.push(
+      `\n${lbl}\n`,
+      quote(
+        l
+          .map((s) => `${s.name} | ${s.rating} | ${fmt(s.price)} تومان`)
+          .join("\n"),
+      ),
+      "\n",
+    );
+  }
+  if (segs.length === 1) segs.push("\nفعلاً بازیکنی نیست.");
+  return segs;
+};
 const catRows = () => [
   Object.keys(CAT).slice(0, 2),
   Object.keys(CAT).slice(2),
@@ -226,12 +236,14 @@ const catRows = () => [
 ];
 const starsIn = async (pos) => await Store.find({ pos }).sort({ price: 1 });
 
-const HELP = `⚽ Global Kick
-۱) با /team و رمز تیم وارد تیمتان شوید (رمز را از «کد تیم من» دوباره می‌بینید).
+const HELP = [
+  "⚽ Global Kick\n\n",
+  quote(`۱) با /team و رمز تیم وارد تیمتان شوید (رمز را از «کد تیم من» دوباره می‌بینید).
 ۲) از «تیم من» ترکیب، تاکتیک و ارتقاها را مدیریت کنید.
 ۳) «فروشگاه»: پک سکه و بازیکن VIP (با تومان) + بازار نقل‌وانتقال (خرید/فروش بازیکن بین تیم‌ها با گرو).
-۴) هر سیزن ۲۵ روز است: ۱۵ روز لیگ، بعد حذفی (یک‌هشتم تا فینال). نتیجه و جدول داخل گروه اعلام می‌شود.
-دستورها: /start  /team  /panel`;
+۴) هر سیزن ۲۵ روز است: ۱۵ روز لیگ، بعد حذفی (یک‌هشتم تا فینال). نتیجه و جدول داخل گروه اعلام می‌شود.`),
+  "\n\nدستورها: /start  /team  /panel",
+];
 
 const S = {};
 // ---------- ورود/خروج ----------
@@ -369,12 +381,11 @@ S.packs = async (u, t, chat) => {
   });
   for (const o of await User.find({ role: "owner" }))
     api.send(o.uid, `🧾 سفارش #${no}: ${team.name} - ${fmt(pk.coins)} سکه`);
-  return menu(
-    chat,
-    u,
-    "shop",
-    `🧾 سفارش #${no} ثبت شد.\n🪙 ${fmt(pk.coins)} سکه | 💵 ${fmt(pk.price)} تومان\n\n${cfg.payInfo}\nپس از پرداخت، رسید و شماره سفارش را به ${cfg.support} بفرستید.`,
-  );
+  return menu(chat, u, "shop", [
+    `🧾 سفارش #${no} ثبت شد.\n🪙 ${fmt(pk.coins)} سکه | 💵 ${fmt(pk.price)} تومان\n\n`,
+    quote(cfg.payInfo || "—"),
+    `\nپس از پرداخت، رسید و شماره سفارش را به ${cfg.support} بفرستید.`,
+  ]);
 };
 S.starcat = async (u, t, chat) => {
   const pos = CAT[t];
@@ -385,13 +396,18 @@ S.starcat = async (u, t, chat) => {
     chat,
     u,
     "buyStar",
-    `${t}\n\n` +
-      stars
-        .map(
-          (s, i) => `${i + 1}) ${s.name} | ${s.rating} | ${fmt(s.price)} تومان`,
-        )
-        .join("\n") +
+    [
+      `${t}\n\n`,
+      quote(
+        stars
+          .map(
+            (s, i) =>
+              `${i + 1}) ${s.name} | ${s.rating} | ${fmt(s.price)} تومان`,
+          )
+          .join("\n"),
+      ),
       "\n\nبرای خرید انتخاب کنید (سفارش ثبت و پس از پرداخت اعمال می‌شود):",
+    ],
     [
       ...stars.map((s, i) => [`${i + 1}) ${s.name} - ${fmt(s.price)} تومان`]),
       [L.back],
@@ -422,12 +438,11 @@ S.buyStar = async (u, t, chat) => {
       o.uid,
       `🧾 سفارش VIP #${no}: ${team.name} - ${s.name} (${fmt(s.price)} تومان)`,
     );
-  return menu(
-    chat,
-    u,
-    "shop",
-    `🧾 سفارش #${no} ثبت شد.\n⭐ ${s.name} | 💵 ${fmt(s.price)} تومان\n\n${cfg.payInfo}\nپس از پرداخت، رسید و شماره سفارش را به ${cfg.support} بفرستید.`,
-  );
+  return menu(chat, u, "shop", [
+    `🧾 سفارش #${no} ثبت شد.\n⭐ ${s.name} | 💵 ${fmt(s.price)} تومان\n\n`,
+    quote(cfg.payInfo || "—"),
+    `\nپس از پرداخت، رسید و شماره سفارش را به ${cfg.support} بفرستید.`,
+  ]);
 };
 // ---------- بازار نقل‌وانتقال ----------
 S.sell1 = async (u, t, chat) => {
@@ -549,7 +564,11 @@ S.pCode = async (u, t, chat) => {
   if (team.ownerUid) return api.send(chat, "این تیم صاحب دارد.");
   team.joinCode = code6();
   await team.save();
-  return menu(chat, u, "panel", `✅ رمز ${teamBtn(team)}:\n${team.joinCode}`);
+  return menu(chat, u, "panel", [
+    `✅ رمز ${teamBtn(team)}:\n`,
+    mono(team.joinCode),
+    "\n\nروی رمز بزنید تا کپی شود.",
+  ]);
 };
 S.pFree = async (u, t, chat) => {
   const team = await findTeam(t);
@@ -852,10 +871,11 @@ async function route(u, t, chat, m) {
       return team ? api.send(chat, lineupText(team)) : needTeam();
     case L.myCode:
       return team
-        ? api.send(
-            chat,
-            `🔑 رمز تیم شما:\n${team.joinCode || "—"}\n(برای ورود دوباره: /team)`,
-          )
+        ? api.send(chat, [
+            "🔑 رمز تیم شما (روی رمز بزنید تا کپی شود):\n",
+            team.joinCode ? mono(team.joinCode) : "—",
+            "\n\nبرای ورود دوباره: /team",
+          ])
         : needTeam();
     case L.leave: {
       if (!team) return needTeam();
@@ -865,7 +885,10 @@ async function route(u, t, chat, m) {
       return logout(
         Object.assign(u, { teamId: null, role: staff ? u.role : "user" }),
         chat,
-        `🚪 از تیم ${team.name} خارج شدید.\nبرای ورود دوباره /team و رمز: ${c}`,
+        [
+          `🚪 از تیم ${team.name} خارج شدید.\nبرای ورود دوباره /team و این رمز:\n`,
+          c ? mono(c) : "—",
+        ],
       );
     }
     case L.swap:
@@ -928,18 +951,18 @@ async function route(u, t, chat, m) {
         chat,
         u,
         "starcat",
-        starsText(await Store.find()) + "\n\nپست مورد نظر را انتخاب کنید:",
+        [...starsText(await Store.find()), "\n\nپست مورد نظر را انتخاب کنید:"],
         catRows(),
       );
     }
     case L.market:
       return team
-        ? menu(
-            chat,
-            u,
-            "market",
-            "🔁 بازار نقل‌وانتقال\nفروش بازیکن نیازمند گرو (۱۰٪ قیمت) است که پس از فروش/لغو برمی‌گردد. کارمزد ۵٪.",
-          )
+        ? menu(chat, u, "market", [
+            "🔁 بازار نقل‌وانتقال\n\n",
+            quote(
+              "فروش بازیکن نیازمند گرو (۱۰٪ قیمت) است که پس از فروش یا لغو برمی‌گردد.\nکارمزد فروش: ۵٪",
+            ),
+          ])
         : needTeam();
     case L.mSell: {
       if (!team) return needTeam();
@@ -1044,17 +1067,17 @@ async function route(u, t, chat, m) {
               )
               .join("\n"),
         );
-      case L.pCodes:
-        return api.send(
-          chat,
-          "🔑 رمز تیم‌ها:\n" +
-            all
-              .map(
-                (x) =>
-                  `${teamBtn(x)}: ${x.joinCode || "—"}${x.ownerUid ? " 👤" : ""}`,
-              )
-              .join("\n"),
+      case L.pCodes: {
+        const segs = ["🔑 رمز تیم‌ها (روی هر رمز بزنید تا کپی شود):\n\n"];
+        all.forEach((x) =>
+          segs.push(
+            `${teamBtn(x)}: `,
+            x.joinCode ? mono(x.joinCode) : "—",
+            x.ownerUid ? " 👤\n" : "\n",
+          ),
         );
+        return api.send(chat, segs);
+      }
       case L.pStars:
         return api.send(chat, starsText(await Store.find().sort({ price: 1 })));
     }
